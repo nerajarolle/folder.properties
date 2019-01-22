@@ -1,6 +1,11 @@
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.stream.Stream;
 
 public class MyFolder{
 	/*
@@ -21,13 +26,10 @@ public class MyFolder{
 	 * - printFolderList: prints list of subfolders in canonical format		 
 	 */
 		private String folderpath;
+		private Path folder;
 		private long size;
 		private long filecount;
 		private long dircount;
-		private ArrayList<File> file_list;
-		private ArrayList<File> dir_list;
-		private ArrayList<String> file_list_string;
-		private ArrayList<String> dir_list_string;
 
 		MyFolder(File dir) {
 			this.folderpath = dir.getAbsolutePath();
@@ -35,102 +37,79 @@ public class MyFolder{
 			
 		}
 		public void Initialize() {
-			this.file_list = new ArrayList<File>();
-			this.dir_list = new ArrayList<File>();
-			this.file_list_string = new ArrayList<String>();
-			this.dir_list_string = new ArrayList<String>();
-			this.createFileFolderLists(this.folderpath);
-			this.filecount = this.getFileList().size();
-			this.dircount = this.getFolderList().size();
+			this.folder = Paths.get(this.folderpath);
+			this.setFileCount();
+			this.setFolderCount();
+			//this.filecount = this.getFileCount();
+			//this.dircount = this.getFolderCount();
 			this.size = this.getFileSize();			
 		}
 		
-		public void createFileFolderLists(String path) {
-			File dir = new File(path);			
-			if (dir.isDirectory()) {
-				for (File file: dir.listFiles()) {
-					if (file.isFile()) {
-						this.file_list.add(file);
-					
-					}
-					else
-						createFileFolderLists(file.getAbsolutePath());
-				}
-				// we do not include current folder
-				if (path != this.folderpath) {
-					this.dir_list.add(dir);
-				}
+		
+		private void setFileCount() {
+			long counter = 0;
+			try {
+				counter = Files.walk(this.folder).filter(p -> p.toFile().isFile()).count();
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
-			else if (dir.isFile()) {
-				this.file_list.add(dir);
-			}
+			this.filecount = counter;
 		}
 		
-		public void createFileFolderListsString(String path) {
-			File dir = new File(path);			
-			if (dir.isDirectory()) {
-				for (File file: dir.listFiles()) {
-					if (file.isFile()) {
-						try {
-							this.file_list_string.add(file.getCanonicalPath());
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-					
-					}
-					else
-						createFileFolderLists(file.getAbsolutePath());
-				}
-				// we do not include current folder
-				if (path != this.folderpath) {
-					try {
-						this.dir_list_string.add(dir.getCanonicalPath());
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
+		private void setFolderCount() {
+			long counter = 0;
+			try {
+				counter = Files.walk(this.folder).filter(p -> p.toFile().isDirectory()).count();
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
-			else if (dir.isFile()) {
-				try {
-					this.file_list_string.add(dir.getCanonicalPath());
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
+			this.dircount = counter;
 		}
 		
 		public long getFileCount() {
 			return this.filecount;
 		}
-		public long getSize() {
-			return this.size;
-		}
 		public long getFolderCount() {
 			return this.dircount;
 		}
+		
+		/*public long getFileCount() {
+			long counter = 0;
+			try {
+				counter = Files.walk(this.folder).filter(p -> p.toFile().isFile()).count();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			return counter;
+		}*/
+		
+		public long getSize() {
+			return this.size;
+		}
+		/*
+		public long getFolderCount() {
+			long counter = 0;
+			try {
+				counter = Files.walk(this.folder).filter(p -> p.toFile().isDirectory()).count();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			return counter;
+		}*/
 		public String getFolderPath() {
 			return this.folderpath;
 		}
 		
-		public ArrayList<File> getFileList() {
-			return this.file_list;
-		}
-		public ArrayList<File> getFolderList() {
-			return this.dir_list;
-		}
-		public ArrayList<String> getFileListString() {
-			return this.file_list_string;
-		}
-		public ArrayList<String> getFolderListString() {
-			return this.dir_list_string;
-		}
 		public long getFileSize() {
 			long size = 0;
-			for (int i=0; i<this.getFileList().size(); i++) {
-				size += this.getFileList().get(i).length();
+			
+			try {
+				size = Files.walk(this.folder).filter(p -> p.toFile().isFile()).mapToLong(p -> p.toFile().length()).sum();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 			return size;
 		}
@@ -141,22 +120,20 @@ public class MyFolder{
 		}
 		public void printListOfFiles() {
 			System.out.println("\nFiles list in folder " + this.getFolderPath());
-			for (int i = 0;i< this.getFileList().size(); i++) {
-				try {
-					System.out.println(String.format("%s: %s",i+1 ,this.getFileList().get(i).getCanonicalFile()));
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
+			try {
+				Files.walk(this.folder).filter(Files::isRegularFile).forEach(filePath -> System.out.println(filePath));
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}			
 		}
 		public void printListOfFolders() {
 			System.out.println("\nFolder list in folder " + this.getFolderPath());
-			for (int i = 0;i< this.getFolderList().size(); i++) {
-				try {
-					System.out.println(String.format("%s: %s",i+1 ,this.getFolderList().get(i).getCanonicalFile()));
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+			try {
+				Files.walk(this.folder).filter(Files::isDirectory).forEach(filePath -> System.out.println(filePath));
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 		
@@ -184,7 +161,6 @@ public class MyFolder{
 			System.out.println(String.format("Total number of files: %s", this.getFileCount()));
 			System.out.println(String.format("Total number of folders: %s", this.getFolderCount()));
 			System.out.println(String.format("Folder Size: %s bytes %s", this.getSize(), additional_size));
-		}
-		
+		}	
 }
 
